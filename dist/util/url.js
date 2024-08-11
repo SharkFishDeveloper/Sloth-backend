@@ -8,24 +8,31 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = __importDefault(require("express"));
-const cors_1 = __importDefault(require("cors"));
-const url_1 = require("./util/url");
+exports.getPreassignedUrl = getPreassignedUrl;
 const { S3Client, GetObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
-require('dotenv').config();
-const app = (0, express_1.default)();
-app.use((0, cors_1.default)());
-app.use(express_1.default.json());
-app.post("/preassingedUrl", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const url = yield (0, url_1.getPreassignedUrl)();
-    return res.json({ message: url });
-}));
-app.get("/", (req, res) => {
-    return res.json({ message: "Hello" });
-});
-app.listen(3000, () => console.log("Server started"));
+function getPreassignedUrl() {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const client = new S3Client({
+                region: "ap-south-1",
+                credentials: {
+                    accessKeyId: process.env.AWS_SECRET,
+                    secretAccessKey: process.env.AWS_SECRET_KEY
+                }
+            });
+            const command = new GetObjectCommand({
+                Bucket: "git-bucket0",
+                Key: "repos",
+            });
+            //   console.log( process.env.AWS_SECRET," ", process.env.AWS_SECRET_KEY);
+            const url = yield getSignedUrl(client, command, { expiresIn: 600 });
+            return { url };
+        }
+        catch (error) {
+            console.log(error);
+            return { error };
+        }
+    });
+}

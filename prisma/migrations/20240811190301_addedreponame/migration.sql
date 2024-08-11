@@ -10,14 +10,14 @@ CREATE TABLE "User" (
 
 -- CreateTable
 CREATE TABLE "Repositories" (
-    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
     "collaborationOption" BOOLEAN NOT NULL DEFAULT false,
     "contributors" TEXT[],
     "userId" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "forks" INTEGER NOT NULL DEFAULT 0,
 
-    CONSTRAINT "Repositories_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Repositories_pkey" PRIMARY KEY ("name")
 );
 
 -- CreateIndex

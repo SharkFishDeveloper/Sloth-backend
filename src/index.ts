@@ -43,38 +43,64 @@ app.post("/init",async(req,res)=>{
       return res.json({message:"No user found !!. Please fill correctly"}).status(403);
     }
 
-    const newRepository = await prisma.repositories.create({
-      data:{
-        name:reponame,
-        userId:user.id
-      }
-    });
-    
-    await prisma.user.update({
-      where:{
-        id: user.id,
-        email:email
-      },
-      data:{
-        repositories : {
-          connect: { name: newRepository.name },
-        }
-      } 
-    })
-    const url = await getPreassignedUrl(user.id);
-    return res.json({message:url}).status(200);
+    const url = await getPreassignedUrl(user.id,reponame);
+    return res.json({message:url,id:user.id}).status(200);
   } catch (error) { 
     if (error instanceof z.ZodError) {
       return res.status(400).json({ message: "Enter properly all fields"});
     } 
     //@ts-ignore
     if(error.code==="P2002"){
-      return res.json({message:"Please enter a unique repo name"}).status(403);
+      return res.json({message:"Please enter a unique repo name"}).status(500);
     }
     return res.json({message:error}).status(500)
   }
 
 })
+
+app.post("/push",async(req,res)=>{
+  try {
+    const parsedBody = requestBodySchema.parse(req.body);
+    const {email,password,reponame} = req.body;
+    const user  = await prisma.user.findUnique({
+      where:{
+        email:email,
+        password:password, // TODO : hash it, 
+      },
+      select:{
+        id:true
+      }
+    })
+    if(!user){
+      return res.json({message:"No user found !!. Please fill correctly"}).status(403);
+    }
+    const reponameCheck = await prisma.repositories.findUnique({
+      where:{
+        name:reponame,
+        userId:user.id
+      }
+    })
+    if(reponameCheck){
+      const url = await getPreassignedUrl(user.id,reponame);
+      return res.json({message:url,id:user.id}).status(200);
+    }
+    else {
+      return res.json({message:"No such repository exists"}).status(400);
+    }
+   
+  } catch (error) { 
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ message: "Enter properly all fields"});
+    } 
+    //@ts-ignore
+    if(error.code==="P2002"){
+      return res.json({message:"Please enter a unique repo name"}).status(500);
+    }
+    return res.json({message:error}).status(500)
+  }
+
+})
+
 
 app.post("/preassingedUrl",async(req,res)=>{
   try {
@@ -99,7 +125,7 @@ app.post("/preassingedUrl",async(req,res)=>{
     },
   });
   if(repositories.length>0){
-    const url = await getPreassignedUrl(id);
+    const url = await getPreassignedUrl(id,reponame);
     return res.json({message:url })
   }else if(repositories.length ===0){
     return res.json({message:`No repo found with name - ${reponame} found` }).status(400)

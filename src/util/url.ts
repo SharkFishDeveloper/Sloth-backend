@@ -99,3 +99,26 @@ export async function getPullRequestPreAssingedUrl(reponame:string,userId:string
     return {error};
    }
 }
+
+export async function getPrDownloadUrlFork(userId:string,name:string) {
+  try {
+ 
+    const s3Client = new S3Client({
+        region: 'ap-south-1',
+        credentials: {
+          accessKeyId: process.env.AWS_SECRET,
+          secretAccessKey: process.env.AWS_SECRET_KEY
+        }})
+ 
+    const command = new GetObjectCommand({
+     Bucket: 'git-bucket0',
+     Key: `repos/${userId}/${name}/${name}.gz`
+   });
+ 
+   const url = await getSignedUrl(s3Client, command, { expiresIn: 30 }); 
+   return url;
+   } catch (error) {
+    console.log(error)
+    return {error};
+   }
+}

@@ -14,35 +14,48 @@ datasource db {
 }
 
 model User {
-  name         String         @unique
   id           String         @id @default(uuid())
+  name         String         @unique
   email        String         @unique
   password     String
   createdAt    DateTime       @default(now())
   repositories Repositories[]
-  pullRequest  PullRequest[]
+  pullRequest  UserPullRequest[]
 }
 
 model Repositories {
-  name                String   @id
+  name                String   @id 
+  description         String   @default("")
   collaborationOption Boolean  @default(false)
   contributors        String[]
   userId              String
+  creatorName         String
   createdAt           DateTime @default(now())
-  user                User     @relation(fields: [userId], references: [id])
   forks               Int      @default(0)
   mergedPullRequestId String[]
   mergedPullRequestContributor String[]
+  pullRequest         PullRequest[]
+  user                User     @relation(fields: [userId], references: [id])
+  
 }
 
 model PullRequest {
   id            String    @id 
-  repoName      String
   parentBranch  String
   childBranch   String
   totalCommits  Int  
   createdAt     DateTime  @default(now()) 
   message       String
   contributor   String
-  user          User      @relation(fields: [contributor], references: [name])
+  repositoryName   String
+  creatorId       String       
+  repository          Repositories      @relation(fields: [repositoryName], references: [name])
+}
+
+model UserPullRequest{
+  id            String       @id 
+  repoName      String
+  createdAt     DateTime     @default(now())
+  userName      String
+  user          User         @relation(fields: [userName],references: [name])
 }

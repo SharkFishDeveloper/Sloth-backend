@@ -320,5 +320,11 @@ app.post("/fork",async(req,res)=>{
 app.get("/",(req,res)=>{
   return res.json({message:"Hello"})
 })
+
+app.get("/post",(req,res)=>{
+  const {usename,password} = req.body;
+  return res.json({message:usename,password})
+})
+
 app.listen(4000,()=>console.log("Server started"))
 

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsc -b && node ./dist/index.js",
     "start": "nodemon --exec ts-node src/index.ts",
-    "build": "tsc -b"
+    "build": "tsc -b && npx prisma generate"
   },
   "keywords": [],
   "author": "",

@@ -273,3 +273,39 @@ app.get("/",(req,res)=>{
   return res.json({message:"Hello"})
 })
 app.listen(3000,()=>console.log("Server started"))
+
+
+// model User {
+//   name         String         @unique
+//   id           String         @id @default(uuid())
+//   email        String         @unique
+//   password     String
+//   createdAt    DateTime       @default(now())
+//   repositories Repositories[]
+//   pullRequest  PullRequest[]
+// }
+
+// model Repositories {
+//   name                String   @id 
+//   collaborationOption Boolean  @default(false)
+//   contributors        String[]
+//   userId              String
+//   createdAt           DateTime @default(now())
+//   user                User     @relation(fields: [userId], references: [id])
+//   forks               Int      @default(0)
+//   mergedPullRequestId String[]
+//   mergedPullRequestContributor String[]
+  
+// }
+
+// model PullRequest {
+//   id            String    @id 
+//   repoName      String
+//   parentBranch  String
+//   childBranch   String
+//   totalCommits  Int  
+//   createdAt     DateTime  @default(now()) 
+//   message       String
+//   contributor   String
+//   user          User      @relation(fields: [contributor], references: [name])
+// }

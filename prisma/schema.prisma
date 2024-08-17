@@ -20,11 +20,11 @@ model User {
   password     String
   createdAt    DateTime       @default(now())
   repositories Repositories[]
-  pullRequest  PullRequest[]
+  pullRequest  UserPullRequest[]
 }
 
 model Repositories {
-  name                String   @id
+  name                String   @id 
   collaborationOption Boolean  @default(false)
   contributors        String[]
   userId              String
@@ -33,16 +33,25 @@ model Repositories {
   forks               Int      @default(0)
   mergedPullRequestId String[]
   mergedPullRequestContributor String[]
+  pullRequest         PullRequest[]
+  
 }
 
 model PullRequest {
   id            String    @id 
-  repoName      String
   parentBranch  String
   childBranch   String
   totalCommits  Int  
   createdAt     DateTime  @default(now()) 
   message       String
   contributor   String
-  user          User      @relation(fields: [contributor], references: [name])
+  repository          Repositories      @relation(fields: [contributor], references: [name])
+}
+
+model UserPullRequest{
+  id            String    @id 
+  repoName      String
+  createdAt     DateTime  @default(now())
+  userName      String
+  user          User      @relation(fields: [userName],references: [name])
 }

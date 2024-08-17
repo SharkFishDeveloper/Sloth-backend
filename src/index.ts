@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { getPrDownloadUrl, getPreassignedUrl, getPreassignedUrlForContributors, getPullRequestPreAssingedUrl } from "./util/url";
+import { getPrDownloadUrl, getPrDownloadUrlFork, getPreassignedUrl, getPreassignedUrlForContributors, getPullRequestPreAssingedUrl } from "./util/url";
 import prisma from "./util/db";
 
 import { any, z } from 'zod';
@@ -14,6 +14,15 @@ const requestBodySchema = z.object({
     .min(6, { message: "Password must be at least 6 characters long" })
 });
 
+const requestBodySchemaInit = z.object({
+  reponame: z.string()
+    .min(6, { message: "Repo name too short" }),
+  email: z.string()
+    .email({ message: "Invalid email address" }), 
+  password: z.string()
+    .min(6, { message: "Password must be at least 6 characters long" }),
+  description : z.string().max(30,"Too long description").optional()
+});
 
 
 const pullrRequestBodySchema = z.object({
@@ -44,15 +53,16 @@ app.use(express.json())
 
 app.post("/init",async(req,res)=>{
   try {
-    const parsedBody = requestBodySchema.parse(req.body);
-    const {email,password,reponame} = req.body;
+    const parsedBody = requestBodySchemaInit.parse(req.body);
+    const {email,password,reponame,description} = req.body;
     const user  = await prisma.user.findUnique({
       where:{
         email:email,
-        password:password, // TODO : hash it, 
+        password:password,// TODO : hash it, 
       },
       select:{
-        id:true
+        id:true,
+        name:true
       }
     })
     if(!user){
@@ -62,6 +72,8 @@ app.post("/init",async(req,res)=>{
       data:{
         name:reponame,
         userId:user.id,
+        description,
+        creatorName:user.name
       }
     })
     const url = await getPreassignedUrl(user.id,reponame);
@@ -124,7 +136,6 @@ app.post("/push",async(req,res)=>{
 
 app.post("/push-origin",async(req,res)=>{
   try {
-    // email:username,password,repoName:reponame,totalCommits:history.length,childBranch:branchname,parentBranch
     const parsedBody = pullrRequestBodySchema.parse(req.body);
     const {email,password,repoName,totalCommits,childBranch,parentBranch,message} = req.body;
     const user  = await prisma.user.findUnique({
@@ -165,17 +176,30 @@ app.post("/push-origin",async(req,res)=>{
       }
       const randomSixDigitNumber = Math.floor(100000 + Math.random() * 900000);
       const randomPrId = randomSixDigitNumber.toString()
-      await prisma.pullRequest.create({
-        data:{
-          id:randomPrId,
-          repoName:repoName,
-          parentBranch,
-          childBranch,
-          totalCommits,
-          message,
-          contributor:user.name
-        }
-      })
+      await prisma.$transaction(async (prisma) => {
+        await prisma.pullRequest.create({
+          data: {
+            id: randomPrId,
+            parentBranch,
+            childBranch,
+            totalCommits,
+            message,
+            contributor: user.name,
+            repositoryName: repoName,
+            creatorId: reponameCheck.userId  
+          },
+        });
+
+        await prisma.userPullRequest.create({
+          data:{
+            id:randomPrId,
+            repoName:repoName,
+            userName:user.name
+          }
+        })
+
+
+      });
       const url = await getPreassignedUrlForContributors(reponameCheck.userId,repoName,randomPrId);
       return res.json({message:url,id:user.id}).status(200);
      }
@@ -189,7 +213,7 @@ app.post("/push-origin",async(req,res)=>{
       return res.status(400).json({ message: `--- Enter properly all fields ---
         ${error.errors[0].message}`,status:400});
     } 
-    //@ts-ignore
+     //@ts-ignore
     if(error.code==="P2002"){
       return res.json({message:"Please enter a unique repo name",status:400}).status(500);
     }
@@ -222,16 +246,29 @@ app.post("/merge",async(req,res)=>{
         id:prid
       },
       select:{
-        repoName:true,
+        repositoryName:true,
         parentBranch:true,
         childBranch:true,
+        creatorId:true
       }
     })
-
-   if(pr){
-    const url = await getPrDownloadUrl(user.id,prid,pr.repoName);
+    
+    if(!pr?.creatorId){
+      return res.json({message:"No such user exists"})
+    }
+    else if(pr.creatorId !== user.id){
+      return res.json({message:"You cannot merge it. Ask the administrator to merge it!!"})
+    }
+   else if(pr){
+    const url = await getPrDownloadUrl(user.id,prid,pr.repositoryName);
     const parentBranch = pr.parentBranch;
     const childBranch = pr.childBranch;
+
+    await prisma.pullRequest.delete({
+      where: {
+        id: prid
+      }
+    });
     return res.json({message:url,parentBranch,childBranch});
    }else{
     return res.json({message:`No pull request - ${prid} exists`,status:400});
@@ -269,43 +306,19 @@ app.post("/pull",async(req,res)=>{
     return res.json({message:`No repository with name - ${reponame} found !! `,status:400}).status(400)
 })
 
+app.post("/fork",async(req,res)=>{
+ try {
+  const {userID,name} = req.body;
+  const forkUrl = await getPrDownloadUrlFork(userID,name);
+  return res.json({message:forkUrl,status:200})
+ } catch (error) {
+  return res.json({message:"error forking",status:500}) 
+ }
+})
+
+
 app.get("/",(req,res)=>{
   return res.json({message:"Hello"})
 })
-app.listen(3000,()=>console.log("Server started"))
+app.listen(4000,()=>console.log("Server started"))
 
-
-// model User {
-//   name         String         @unique
-//   id           String         @id @default(uuid())
-//   email        String         @unique
-//   password     String
-//   createdAt    DateTime       @default(now())
-//   repositories Repositories[]
-//   pullRequest  PullRequest[]
-// }
-
-// model Repositories {
-//   name                String   @id 
-//   collaborationOption Boolean  @default(false)
-//   contributors        String[]
-//   userId              String
-//   createdAt           DateTime @default(now())
-//   user                User     @relation(fields: [userId], references: [id])
-//   forks               Int      @default(0)
-//   mergedPullRequestId String[]
-//   mergedPullRequestContributor String[]
-  
-// }
-
-// model PullRequest {
-//   id            String    @id 
-//   repoName      String
-//   parentBranch  String
-//   childBranch   String
-//   totalCommits  Int  
-//   createdAt     DateTime  @default(now()) 
-//   message       String
-//   contributor   String
-//   user          User      @relation(fields: [contributor], references: [name])
-// }

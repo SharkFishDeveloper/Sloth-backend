@@ -14,8 +14,8 @@ datasource db {
 }
 
 model User {
-  name         String         @unique
   id           String         @id @default(uuid())
+  name         String         @unique
   email        String         @unique
   password     String
   createdAt    DateTime       @default(now())
@@ -25,15 +25,17 @@ model User {
 
 model Repositories {
   name                String   @id 
+  description         String   @default("")
   collaborationOption Boolean  @default(false)
   contributors        String[]
   userId              String
+  creatorName         String
   createdAt           DateTime @default(now())
-  user                User     @relation(fields: [userId], references: [id])
   forks               Int      @default(0)
   mergedPullRequestId String[]
   mergedPullRequestContributor String[]
   pullRequest         PullRequest[]
+  user                User     @relation(fields: [userId], references: [id])
   
 }
 
@@ -45,13 +47,15 @@ model PullRequest {
   createdAt     DateTime  @default(now()) 
   message       String
   contributor   String
-  repository          Repositories      @relation(fields: [contributor], references: [name])
+  repositoryName   String
+  creatorId       String       
+  repository          Repositories      @relation(fields: [repositoryName], references: [name])
 }
 
 model UserPullRequest{
-  id            String    @id 
+  id            String       @id 
   repoName      String
-  createdAt     DateTime  @default(now())
+  createdAt     DateTime     @default(now())
   userName      String
-  user          User      @relation(fields: [userName],references: [name])
+  user          User         @relation(fields: [userName],references: [name])
 }
